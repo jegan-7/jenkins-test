@@ -1,0 +1,79 @@
+pipeline {
+    agent any  // This specifies that the pipeline can run on any available agent (node)
+
+    environment {
+        // Define environment variables
+        PROJECT_NAME = 'MyProject'
+        STAGING_SERVER = 'staging.example.com'
+        PROD_SERVER = 'prod.example.com'
+    }
+
+    stages {
+        // Stage 1: Checkout the code
+        stage('Checkout') {
+            steps {
+                // Pull the code from the Git repository
+                git 'https://github.com/yourusername/your-repository.git'
+            }
+        }
+
+        // Stage 2: Run unit tests
+        stage('Test') {
+            steps {
+                // Assuming there's a 'test' script or command for running unit tests
+                script {
+                    try {
+                        sh 'python -m unittest discover -s tests'
+                    } catch (Exception e) {
+                        currentBuild.result = 'FAILURE' // Mark the build as failed if tests fail
+                        throw e
+                    }
+                }
+            }
+        }
+
+        // Stage 3: Build the project
+        stage('Build') {
+            steps {
+                // Command to build the project (e.g., using Maven, Gradle, or a simple build script)
+                sh './build.sh'  // Replace with your actual build command
+            }
+        }
+
+        // Stage 4: Deploy to Staging Environment
+        stage('Deploy to Staging') {
+            steps {
+                // Deploy to staging (you can replace this with actual deploy commands)
+                sh "scp ./build/* user@${STAGING_SERVER}:/path/to/staging"
+            }
+        }
+
+        // Stage 5: Deploy to Production (optional, can be triggered manually or after approval)
+        stage('Deploy to Production') {
+            when {
+                branch 'main'  // This stage runs only for the 'main' branch
+            }
+            steps {
+                // Deploy to production server
+                input message: 'Approve deployment to production?', ok: 'Deploy'
+                sh "scp ./build/* user@${PROD_SERVER}:/path/to/production"
+            }
+        }
+    }
+
+    post {
+        // This block is used to define actions after the pipeline has run
+        always {
+            // Actions that run always after the pipeline completes (success, failure, or unstable)
+            echo 'This will always run!'
+        }
+        success {
+            // Actions that run only if the pipeline succeeds
+            echo 'The pipeline was successful!'
+        }
+        failure {
+            // Actions that run only if the pipeline fails
+            echo 'The pipeline failed!'
+        }
+    }
+}
